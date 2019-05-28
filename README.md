@@ -15,3 +15,6 @@ device: Environment specifier (string, e.g. 'scanner', or 'laptop').
 
 ## Organization
 **animal-sounds/** and **faces/** contain the auditory (cat and dog vocalizations) and visual (black and white face photos) stimuli for the task. **results/** is where .mat output files from **floc_scanner.m** will be saved. **analysis scripts/** contains scripts for assessing performance on the task.
+
+## Citation
+If you use these tasks, please cite Noyce, A. L., Cestero, N., Michalka, S. W., Shinn-Cunningham, B. G., & Somers, D. C. (2017). Sensory-biased and multiple-demand processing in human lateral frontal cortex. *Journal of Neuroscience, 37(36)*, 8755-8766. doi:10.1523/JNEUROSCI.0660-17.2017
