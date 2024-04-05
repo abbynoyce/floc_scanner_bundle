@@ -1,3 +1,4 @@
+
 function floc_scanner(subID, whichorder, device)
 % This function runs a modality-specific (auditory or visual)
 % working-memory task, and its passive-viewing equivalent, in
@@ -6,6 +7,7 @@ function floc_scanner(subID, whichorder, device)
 % Usage: floc(subID, blockorder, device)
 %   subID: Subject identifier (string, 2 characters)
 %   whichorder: 1,2,3, or 4. Describes which order the 8 blocks occur in.
+%   whichorder: 7 (auditory first, then alternating) or 8 (visual first) for all-active runs.
 %   device: 'scanner' or 'laptop'. Specifies which keyboard to listen on
 %   for input.
 %
@@ -19,14 +21,15 @@ function floc_scanner(subID, whichorder, device)
 cfg.kb = getKeyboardID(device)
 switch device
     case 'scanner'
-        cfg.screen = 1;
+        Screen('Preference', 'SkipSyncTests', 1);
+        cfg.screen = 0;
         cfg.eyetracker = 1;
     case 'laptop'
         % TESTING/PRACTICE
         Screen('Preference', 'SkipSyncTests', 1);
         cfg.screen = 0;
         cfg.eyetracker = 0;
-    case 'bay1desktop'
+    case 'bridgemac'
         % TESTING
         Screen('Preference', 'SkipSyncTests', 1);
         cfg.screen = 1;
@@ -66,7 +69,7 @@ cfg.triggerKey2 = '=+';
 
 % Get block details specifications
 f = fopen(order_file);
-a = textscan(f, '%s %s %s %s');
+a = textscan(f, '%s %s %s %s %s %s');
 order = a{whichorder}; 
 % order is a nblocks x 1 cell array. Each cell is a three-letter string, 
 % 'ACP', 'VMA', etc. First letter specifies modality, second letter
@@ -74,9 +77,8 @@ order = a{whichorder};
 nBlocks = size(order,1);
 
 % Preallocate memory
-stim = cell(blocklength,nBlocks);
 responses = nan(blocklength,nBlocks,2);
-
+cfg.stim_presented = cell(blocklength, nBlocks);
 filename = [subID datestr(now,'_yyyymmdd_HHMM') '.mat'];
 edf_filename = [subID datestr(now, 'HHMM') '.edf'];
 
@@ -86,7 +88,7 @@ save([saveDir filename]);
 
 cfg.freq = 44100; % Audio device frequency
 InitializePsychSound;
-cfg.pahandle = PsychPortAudio('Open', [], [], 0, cfg.freq,2);
+cfg.pahandle = PsychPortAudio('Open', 2, [], 0, cfg.freq,2);
 
 AssertOpenGL;
 [cfg.win, rect] = Screen('OpenWindow',cfg.screen,[0 0 0]);
@@ -97,8 +99,8 @@ if cfg.eyetracker
 end
 
 % Squelch kb input, hide cursor.
-ListenChar(2);
-HideCursor;
+ ListenChar(2);
+% HideCursor;
 
 %% Initialize and save
 % Make sure results directory exists
@@ -149,7 +151,7 @@ if cfg.eyetracker
     
     % Sanity check connection
     connected = Eyelink('IsConnected')
-    [v vs] = Eyelink('GetTrackerVersion');
+    [~, vs] = Eyelink('GetTrackerVersion');
     fprintf('Running experiment on a ''%s'' tracker.\n', vs);
     
     % open file to record tracker data
@@ -168,7 +170,7 @@ if cfg.eyetracker
     Eyelink('command', 'calibration_type = HV9');
     Eyelink('command', 'generate_default_targets = NO');
     
-    caloffset=round(6.5*ppd);
+    caloffset=round(4.5*ppd);
     Eyelink('command','calibration_samples = 10');
     Eyelink('command','calibration_sequence = 0,1,2,3,4,5,6,7,8,9');
     Eyelink('command','calibration_targets = %d,%d %d,%d %d,%d %d,%d %d,%d %d,%d %d,%d %d,%d %d,%d',...
@@ -200,7 +202,7 @@ if cfg.eyetracker
     if Eyelink('IsConnected')~=1
         Eyelink( 'Shutdown');
         return;
-    end;
+    end
     
     % Initial calibration of the eye tracker
     EyelinkDoTrackerSetup(el);
@@ -229,7 +231,7 @@ Screen('Flip', cfg.win);
  j = 1; % SANITY CHECK TEST
 
 for b = 1:nBlocks
-    b
+    %b
     %% Block setup stuff
     
     % Parse order
@@ -255,7 +257,7 @@ for b = 1:nBlocks
                 case 'W'
                     cfg.stimDir = cfg.vStimDir1;
                 case 'M'
-                    cfg.stimDir =  cfg.vStimDir2
+                    cfg.stimDir =  cfg.vStimDir2;
             end
             d = dir([cfg.stimDir '*.bmp']);
             modlabel = 'VISUAL';
@@ -273,10 +275,10 @@ for b = 1:nBlocks
     switch task
         case 'P' % Passive block do nothing.
         case 'A' % Active block create 2-backs.
-            i = RandSample(intervals);
+            i = randsample(intervals,1);
             while i <= blocklength
                 stimID(i) = stimID(i - nback);
-                i = i + RandSample(intervals);
+                i = i + randsample(intervals,1);
             end
     end
     
@@ -357,17 +359,17 @@ for b = 1:nBlocks
             break
         else
             fname = allStims(stimID(t)).name;
-            stim_presented{t,b} = fname;
+            cfg.stim_presented{t,b} = fname;
 
             while GetSecs - block_starts(b) - run_start_time < block_landmarks(t+1)
                 %wait
             end
-            % SANITY CHECK TEST TIMING
-            time(j) = GetSecs - run_start_time;
-            if j > 1
-                time(j) - time(j-1)
-            end
-            j = j+1;
+%             % SANITY CHECK TEST TIMING
+%             time(j) = GetSecs - run_start_time;
+%             if j > 1
+%                 time(j) - time(j-1)
+%             end
+%             j = j+1;
             
             % -------------
             % Eyelink Stuff
@@ -407,7 +409,7 @@ for b = 1:nBlocks
     
 end
 
-while GetSecs - run_start_time < block_starts(b) + cfg.blockTime + 4*TR;
+while GetSecs - run_start_time < block_starts(b) + cfg.blockTime + 4*TR
     % Wait
     '4TR wait for end-run fixation';
 end
@@ -467,7 +469,7 @@ function audStim(cfg,file)
 % columns, while PsychPortAudio wants the reverse.
 % wavread is older function, used only for running on testing room Mac -
 % otherwise change to audioread
-stim = wavread([cfg.stimDir file])';
+stim = audioread([cfg.stimDir file])';
 stim = stim / max(max(stim)); % Normalize volume.
 if size(stim,1) == 1
     stim = [stim;stim]; % make it stereo if it isn't already
@@ -487,6 +489,7 @@ imtex = Screen('MakeTexture', cfg.win, stim);
 Screen('DrawTexture', cfg.win, imtex);
 DrawFormattedText(cfg.win, '+', 'center','center',[0 0 0]);
 Screen('Flip', cfg.win);
+Screen('Close',imtex); % Close textire after presenting it
 
 end
 
@@ -499,12 +502,12 @@ function responses = getResponse(cfg)
 responses = nan(1,1,2);
 
 KbQueueCreate(cfg.kb);
-KbQueueStart;
+KbQueueStart(cfg.kb);
 
 % As long as it's before the timeout
 while (GetSecs - cfg.stimEndTime < cfg.timeoutTime)
     % Look for keypresses
-    [pressed, firstPress]=KbQueueCheck;
+    [pressed, firstPress]=KbQueueCheck(cfg.kb);
     % If a key is pressed
     if numel(find(firstPress)) == 1
         k = find(firstPress); % Keycode of pressed key
@@ -525,7 +528,7 @@ while (GetSecs - cfg.stimEndTime < cfg.timeoutTime)
             end
         elseif ismember(k, [KbName('3'),KbName('3#'), KbName('4'),KbName('4$')])
             responses(1,1,1) = k;
-            responses(1,1,2) = firstPress(k) - cfg.stimEndTime
+            responses(1,1,2) = firstPress(k) - cfg.stimEndTime;
         end
     else
         % Multiple keys pressed
@@ -534,7 +537,7 @@ while (GetSecs - cfg.stimEndTime < cfg.timeoutTime)
     end
 end
 
-KbQueueRelease;
+KbQueueRelease(cfg.kb);
 
 % Timeout.
 if GetSecs - cfg.stimEndTime > cfg.timeoutTime
@@ -551,11 +554,11 @@ function run_start_time = getTrigger(cfg)
 % pressed.
 
 KbQueueCreate(cfg.kb);
-KbQueueStart;
+KbQueueStart(cfg.kb);
 
 while 1
     % Look for keypresses
-    [pressed, firstPress]=KbQueueCheck;
+    [pressed, firstPress]=KbQueueCheck(cfg.kb);
     if find(firstPress)
         find(firstPress)
     end
@@ -576,7 +579,7 @@ while 1
     end
 end
 
-KbQueueRelease;
+KbQueueRelease(cfg.kb);
 
 end
 
@@ -585,11 +588,11 @@ function kbnum = getKeyboardID(device)
 % Which string to look for?
 switch device
     case 'scanner'
-        devstring = 'Teensy Keyboard/Mouse';
+        devstring = 'Celeritas Dev';
     case 'laptop'
         devstring = 'Apple Internal Keyboard / Trackpad';
-    case 'bay1desktop'
-        devstring = 'Apple Keyboard';
+    case 'bridgemac'
+        devstring = 'USB Device';
 end
 
 [id,name] = GetKeyboardIndices;
