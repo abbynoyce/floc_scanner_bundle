@@ -119,7 +119,7 @@ corr_response = ones(length(1:blocklength),nBlocks)+1;
 % middle, end of run, 1 TR of instructions, etc.
 block_starts = ([0:7] * TR * TRperblock) + 4*TR; % Timepoints at which each block needs to start. 
 block_starts(5:8) = block_starts(5:8) + 4*TR; % Plus 4 TRs of fixation at mid-run.
-block_landmarks = TR*cumsum([1 .625*ones(1,blocklength)]); % 1 TR instructions, .625 TR per trial
+block_landmarks = TR*cumsum([0 1 .625*ones(1,blocklength)]); % 1 TR instructions, .625 TR per trial
 
 %%
 % -------------
@@ -324,6 +324,7 @@ for b = 1:nBlocks
     DrawFormattedText(cfg.win, text2, 'center',(rect(4)/2 + 20),[255 255 255]);
     
     while GetSecs-run_start_time < block_starts(b)
+        %'waiting!'
         % wait
     end
     'Before block:'
@@ -410,8 +411,7 @@ for b = 1:nBlocks
 end
 
 while GetSecs - run_start_time < block_starts(b) + cfg.blockTime + 4*TR
-    % Wait
-    '4TR wait for end-run fixation';
+    % waiting = '4TR wait for end-run fixation'
 end
 
 if cfg.eyetracker
