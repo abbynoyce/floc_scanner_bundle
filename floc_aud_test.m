@@ -30,14 +30,14 @@ allStims = Shuffle(d);
  allStims = allStims(1:blocklength);
  
 % PsychToolbox initializations
-[cfg.win, rect] = Screen('OpenWindow',0,[0 0 0]);
+[cfg.win, rect] = Screen('OpenWindow',1,[0 0 0]);
 cfg.freq = 44100; % Audio device frequency
 InitializePsychSound;
-cfg.pahandle = PsychPortAudio('Open', [], [], 0, cfg.freq,2);
+cfg.pahandle = PsychPortAudio('Open', 2, [], 0, cfg.freq,2);
     
 % Squelch kb input, hide cursor.
 ListenChar(2);
-HideCursor;
+% HideCursor;
 
 Screen('TextSize', cfg.win, 36);
 DrawFormattedText(cfg.win, '+', 'center','center',[255 255 255]);
@@ -77,7 +77,7 @@ function audStim(cfg,file)
 % columns, while PsychPortAudio wants the reverse.
 % wavread is older function, used only for running on testing room Mac -
 % otherwise change to audioread
-stim = wavread(file)';
+stim = audioread(file)';
 stim = stim / max(max(stim)); % Normalize volume.
 if size(stim,1) == 1
     stim = [stim;stim]; % make it stereo if it isn't already
